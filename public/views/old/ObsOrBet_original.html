@@ -1,0 +1,785 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ObsOrBet</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+		<script src="../../jsPsych/jspsych.js"></script>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"></link>
+		<link rel="stylesheet" href="https://code.getmdl.io/1.2.1/material.indigo-pink.min.css"></link>
+		<script defer src="https://code.getmdl.io/1.2.1/material.min.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-form.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-text.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-single-stim.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-survey-likert_new.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-button-response.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-survey-text.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-instructions.js"></script>	
+		<script src="../../jsPsych/plugins/jspsych-vsl-grid-scene.js"></script>
+		<script src="../../jsPsych/plugins/jspsych-call-function.js"></script>
+		<link rel="stylesheet" href="../../jsPsych/css/jspsych.css" ></link>     
+		<style> h2 {
+    		font-size: 200%;
+			}
+			h1 {
+			font-size: 150%;
+			}
+		</style>  
+    </head>
+    <body>
+    </body>
+    <script>
+    
+//document.body.style.backgroundColor = 'black';
+//document.body.style.color = 'white';
+
+//Setting up global variables
+
+var exp_condition = 1 //when we start using multiple versions, this will be useful to record with the data.
+var okRT = true;
+var pl = 'null'; //maybe unnecessary
+var corr = 0; //to count correct responses in practice predict trials
+var corr2 = 0; //for 2nd practice predict trial
+var pc = 0; //practice count
+var id = 0;
+var cb = 0;
+var c = 0; //trial counter
+var bc = 0; //block counter
+var a = 0; //order count in array
+var b = 0; //trial count for bets/observation feedback
+var t = 10; //trial counter, set to # of practice trials (will be changed later to 50 for regular blocks)
+var obs = 0; //count observed trials
+var goodbets_trial = 0; //count of bets made that are concordant with light sequence (order) 
+var badbets_trial = 0; // 
+var goodbets_total = 0; //cumulative across all blocks
+var badbets_total = 0;
+
+var series = []; //array to hold participant choices on each trial
+
+//arrays of predefined light schedule
+var orderp = [0,1,0,0,1,1,0,1,1,1]; //practice trials
+	order0 = [0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0,1,1,0,0,0];
+	order1 = [0,0,0,0,1,0,1,0,1,1,0,0,0,0,0,0,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1,1,1,0,1,1,1,1,0,0,0,1];
+	order2 = [1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,0,0,1,0,0,0,0,1,0,1,0,0,1,1,1,0,0,1,0,0,0,0,1,0,0];
+	order3 = [0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,0,0,1,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,0,1,0,1,0,0,1,1,1,1,1,1];
+	order4 = [1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,0,0,0,0,1,0,0,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1];
+var order = [order0, order1, order2, order3, order4, orderp]; //array of arrays	
+
+//Defining stimuli to display
+var pushbots = ["../img/pushbot1.png","../img/pushbot2.png","../img/pushbot3.png","../img/pushbot4.png","../img/pushbot5.png"]; //all pushbot images in an array
+var shuffledBots = jsPsych.randomization.repeat(pushbots, 1);
+
+ var timeout = {
+ 	type: 'single-stim',
+ 	stimulus: '<h1>Oops! You ran out of time to make a choice on that trial. Please respond sooner.</h1>',
+	timing_stim: 2000,
+	timing_response: 2000,
+	is_html: true,
+	response_ends_trial: false
+	};
+
+var choice_screen1 = { //screen to show at each trial start, blue light on left 
+	type: 'single-stim',
+  	stimulus: '../img/OffBlueLeft.png',
+  	prompt: function() {
+  		var tnum = t-c;
+  		return '</p><center><p style="font-size:32px">'+tnum+' trials remaining</p></center>';
+  		},
+  		timing_stim: 5000,
+  		timing_response: 5000,
+  		choices: [37,38,39],
+};
+
+var choice_screen2 = { //screen to show at each trial start, blue light on left
+	type: 'single-stim',
+  	stimulus: '../img/OffOrangeLeft.png',
+  	prompt: function() {
+  		var tnum = t-c;
+  		return '</p><center><p style="font-size:32px">'+tnum+' trials remaining</p></center>';
+  		},
+  		timing_stim: 5000,
+  		timing_response: 5000,
+  		choices:[37,38,39]
+};
+
+var obs_blue_left = { //shows blue light ON, left hand side
+	type: 'single-stim',
+	stimulus: '../img/BlueOnLeft.png', 
+	prompt: '</p><center><p style = "font-size: 32px">Observe</p></center>',
+ 	timing_stim: 1500,
+ 	timing_response: 1500,
+ 	data: { choice: 'observe', actual: 'blue', actual: order[bc][a], trial_count: c },
+ 	response_ends_trial: false
+ };
+
+var obs_blue_right = { //shows blue light ON, right hand side
+	type: 'single-stim',
+	stimulus: '../img/BlueOnRight.png', 
+	prompt: '</p><center><p style = "font-size: 32px">Observe</p></center>',
+ 	timing_stim: 1500, 
+ 	timing_response: 1500,
+ 	data: { choice: 'observe', actual: 'blue', actual: order[bc][a], trial_count: c },
+ 	response_ends_trial: false
+ };
+
+var obs_orange_right = { //shows orange light ON, right hand side
+	type: 'single-stim',
+	stimulus: '../img/OrangeOnRight.png',
+	prompt: '</p><center><p style = "font-size: 32px">Observe</p</center>',
+ 	timing_stim: 1500,
+ 	timing_response: 1500,
+ 	data: { choice: 'observe', actual: 'orange', actual: order[bc][a], trial_count: c },
+ 	response_ends_trial: false
+ }; 
+
+var obs_orange_left = { //shows orange light ON, left hand side
+	type: 'single-stim',
+	stimulus: '../img/OrangeOnLeft.png',
+	prompt: '</p><center><p style = "font-size: 32px">Observe</p></center>',
+ 	timing_stim: 1500,
+ 	timing_response: 1500,
+ 	data: { choice: 'observe', actual: 'orange', actual: order[bc][a], trial_count: c },
+ 	response_ends_trial: false
+ }; 
+
+var bet_orange = { //screen to show if subject makes bet on orange
+	type: 'single-stim',
+	stimulus: '../img/GuessOrangeRight.png', 
+	prompt: '</p><center><p style = "font-size: 32px">Guess</p</center>',
+ 	timing_stim: 1500, 
+ 	timing_response: 1500,
+ 	data: { choice: 'bet', bet_color: 'orange', actual: order[bc][a], trial_count: c },
+ 	response_ends_trial: false
+ 	};
+ 	
+var bet_blue = { //screen to show if subject makes bet on blue
+ 	type: 'single-stim',
+	stimulus: '../img/GuessBlueLeft.png', 
+	prompt: '</p><center><p style = "font-size: 32px">Guess</p</center>',
+ 	timing_stim: 1500,
+ 	timing_response: 1500,
+ 	data: { choice: 'bet', bet_color: 'blue', actual: order[bc][a], trial_count: c },
+ 	response_ends_trial: false
+ 	};
+ 
+	
+var block_start = { //screen to show between trial blocks
+	type: 'single-stim',
+	stimulus: function() {
+		return shuffledBots[bc];
+		},
+	prompt: "<center></p> For the next 50 trials, the pushbot above will decide which light to turn on for each trial. <br />"+
+	"This pushbot has a bias for one light right now, but its bias might change suddenly. </p>"+
+	"</p>Press 'S' when you are ready to begin this block.</center>",
+	choices: [83],
+	conditional_function: function() {
+	if(c==0) {
+	goodbets_trial = 0; //reset trial count variables to 0
+	badbets_trial = 0;
+	obs = 0;
+	return true
+	} else {
+	return false
+    }
+    }
+};
+	
+//Collect user input: subject ID and counterbalance info
+var subject_info = {
+  type: 'survey-text',
+  questions: ["Subject ID", "Group","Counterbalance"],
+  on_finish: function(data) {
+  	var responses = JSON.parse(data.responses);
+  	var id = responses.Q0; //subject ID
+  	var cb = responses.Q2; //counterbalance order
+  	jsPsych.data.addProperties({SubjectID: id, Counterbalance: cb});
+  	}
+};
+
+//Welcome screen
+var welcome_block = {
+    	type: 'text',
+    	text: 'Welcome to the experiment. Press any key to begin.'
+    };
+
+//Instructions blocks
+var intro = {
+	type: "instructions",
+ 	pages: ["<h1>In this experiment, you can win money by making correct guesses about which of two lights will turn on.</h1><i><h1>Hint: use the left and right arrow keys to move backward and forward through instructions.</i></h1>",
+ 	 		 "<h1>Here is what it looks like when the <strong><span style = 'color: #23B3F6'>blue</span></strong> light is on: <br /><br />  </h1> <div class = 'center-content'><img src = '../img/BlueOnLeft.png'></img> </p>",
+ 		 	"<h1>Here is what it looks like when the <strong><span style = 'color: #FF6600'>orange</span></strong> light is on: <br /><br />  </h1> <div class = 'center-content'><img src = '../img/OrangeOnRight.png'></img> </p>",
+ 		 	"<h1> Behind the scenes, one of five Pushbots (pictured here) will turn on either the orange or blue light one at a time over the course of 50 trials. </h1><br /> </p> <div class = 'center-content'><img src = '../img/allbots_5.png'></img> </p>",
+ 		 	"<h1>The Pushbots turn the lights on and off in an irregular way, but all have a preference for one color.</p>Some Pushbots prefer to turn on the blue light more often, and others prefer to turn on the orange light more often. </h1></p>",
+ 		 	"<h1>Keep in mind that a Pushbot that used to prefer orange can sometimes suddenly change its preference to blue, and vice versa.</p>This doesn’t happen all the time, but you should expect to see it happen a few times during this task. </h1></p>",
+ 		 	"<h1>At the beginning of each trial, you will see the lights off side by side.</p> <div class = 'center-content'><img src = '../img/OffBlueLeft.png'></img> </p>",
+ 		 	"<h1>You can choose to <strong><span style = 'color: #FFD700'>observe</span></strong> which light the Pushbot turns on (by pressing the <strong><span style = 'color: #FFD700'>UP</span></strong> arrow key): </p>In this case, you will see one of the lights turn on. </h1><br />  </p> <div class = 'center-content'><img src = '../img/BlueLeftObsDemo.png'></img> </p>",
+ 		 	"<h1>Another option is to <strong><span style = 'color: #FFD700'>guess</span></strong> which light the Pushbot will turn on (by pressing the <strong><span style = 'color: #FFD700'>LEFT</span></strong> or <strong><span style = 'color: #FFD700'>RIGHT</span></strong> arrow keys).</p>When you guess, you can win $0.25 if you are correct, but you will lose $0.15 if you are incorrect.</h1></p> <br /></p> <div class = 'center-content'><img src = '../img/GuessOrangeRightDemo.png'></img> </p>",
+ 		 	"<h1>If you choose to observe, you will not win or lose money on that trial. </p><br/>If you choose to guess, you will win $0.25 on that trial if you are correct, and lose $0.15 on that trial if you are incorrect.</p>You will not find out whether you were correct or incorrect until the end of the block (after 50 trials).</p>We will keep track of your guesses and show you how much money you earned at the end of each block.<br/ ></h1>",
+ 		 	 "<h1>There are 5 blocks (one for each Pushbot). Each block has 50 trials. </p>A prompt below the lights will tell you how many trials you have left in the current block.</h1>",
+ 		 	 "<h1>In some blocks, you will be asked to make a prediction about which light will turn on.</p>You will predict after you make your choice, but before you see the outcome. </p>This prediction does not influence which light will turn on, or the amount of money you earn from guesses.</h1>",
+ 		 	 "<h1>Here is an example of the prediction screen. </p>You can use the blank middle button as a guide.</p> If you are completely uncertain, you should click on this button. Each button away from the center represents greater certainty about which light will turn on. </p>If you are totally certain, you should click the corresponding color furthest away from the middle. </h1><br/><div class = 'center-content'><img src = '../img/predict_blank.png'></img> </p>"
+ 		 	 ],
+ 		 	show_clickable_nav: true
+};
+
+
+var response_practice1 = {
+	type: 'button-response',
+  	stimulus: "<h1> Let's try a practice prediction.</p>Click the button you would press if you were completely uncertain about which light will turn on next:</h1></p></p>",
+  	choices: ['../img/blue4.png', '../img/blue3.png', '../img/blue2.png', '../img/blue1.png', '../img/blank.png', '../img/orange1.png', '../img/orange2.png', '../img/orange3.png', '../img/orange4.png'],
+	button_html: '<img class="button-response" src="%choice%"></img>',
+ 	prompt: '</p><p style="font-size:24px">Please make a prediction about which light will turn on next.</p>' +
+  	'</p><p style="font-size:24px">most certain<---------more certain---------least certain---------more certain--------->most certain</p>',
+  	is_html: true
+};
+
+var Correct = {
+	type: "text",	
+	text: "<h1>Correct! If you are completely uncertain, you should click on the white button in the middle."+"</p>Press 'c' for one more practice prediction.</p>",
+    cont_key: ['C'],
+    timing_post_trial: 500
+};
+
+var Incorrect = {
+	type: "text",	
+	text: "<h1>Hmm, that's not quite the response we're looking for. Press 'c' to try again.</p>",
+    cont_key: ['C'],
+    timing_post_trial: 500
+  	
+};
+
+var ifCorrect = {
+	timeline: [Correct],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(data.button_pressed == 4) {
+		corr++;
+		return true;
+		} else {
+		return false;
+			}
+		}
+};
+
+var ifIncorrect = {
+	timeline: [Incorrect],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(data.button_pressed != 4 && corr < 1) {
+		return true;
+		} else {
+		return false;
+			}
+		}
+};
+
+var practice_predict_loop1 = {
+    timeline: [response_practice1, ifIncorrect, ifCorrect],
+    loop_function: function(data){
+		if(corr<1){ //change length here depending on trials per block
+            return true;
+             //continue if corr variable has not updated to 1
+        } else {	
+            return false; //else end the loop
+        }
+        
+    }
+  };
+
+  var response_practice2 = {
+	type: 'button-response',
+  	stimulus: "<h1> Let's try another practice prediction.</p>Click a button you might press if you were almost completely certain that the next light would be blue:</h1></p></p>",
+  	choices: ['../img/blue4.png', '../img/blue3.png', '../img/blue2.png', '../img/blue1.png', '../img/blank.png', '../img/orange1.png', '../img/orange2.png', '../img/orange3.png', '../img/orange4.png'],
+	button_html: '<img class="button-response" src="%choice%"></img>',
+ 	prompt: '</p><p style="font-size:24px">Please make a prediction about which light will turn on next.</p>' +
+  	'</p><p style="font-size:24px">most certain<---------more certain---------least certain---------more certain--------->most certain</p>',
+  	is_html: true
+};
+
+var Correct2 = {
+	type: "text",	
+	text: "<h1>Correct! That response makes sense if you were almost completely certain that the next light would be blue."+"</p>Press 'c' to continue.</p>",
+    cont_key: ['C'],
+    timing_post_trial: 500
+};
+
+var Incorrect2 = {
+	type: "text",	
+	text: "<h1>Hmm, that response doesn't quite make sense. Press 'c' to try again.</p>",
+    cont_key: ['C'],
+    timing_post_trial: 500
+  	
+};
+
+var ifCorrect2 = {
+	timeline: [Correct2],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(data.button_pressed ==0 || data.button_pressed ==1) {
+		corr2++;
+		return true;
+		} else {
+		return false;
+			}
+		}
+};
+
+var ifIncorrect2 = {
+	timeline: [Incorrect2],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(data.button_pressed !=1 && data.button_pressed !=0 && corr2 < 1) {
+		return true;
+		} else {
+		return false;
+			}
+		}
+};
+
+var practice_predict_loop2 = {
+    timeline: [response_practice2, ifIncorrect2, ifCorrect2],
+    loop_function: function(data){
+		if(corr2<1){ //change length here depending on trials per block
+            return true;
+             //continue if corr variable has not updated to 1
+        } else {	
+            return false; //else end the loop
+        }
+        
+    }
+  };
+
+ 	var intro_2 = {
+ 		type: "instructions",
+ 		pages: ["<h1>We will ask you to make predictions during some but not all blocks. Again, your predictions do NOT affect your winnings or which light the Pushbot turns on.",
+ 			"<h1>At the end of the block, you will be shown the actual sequence of lights, as well as your choices on each trial. <br />Your choices will be shown on the bottom row. You will have 20 seconds to view this feedback before the task moves on.</h1></p>",
+ 			"<h1>Here is an example of feedback for 10 trials:</h1></p><div class = 'center-content'><img src = '../img/feedback.png'></img> </p>",
+ 		 	  "<h1>When you see the block feedback, you will only see the two rows of lights. It will look something like the image below. The top row will always represent the actual sequence, and the bottom row will always represent your choices. </p> Press the left arrow now if you want a reminder about what the different symbols mean. Press the right arrow when you are ready to continue.<br /><div class = 'center-content'><img src = '../img/feedback_blank.png'></img> </p>" 
+ 		 	  ],
+ 		 	  show_clickable_nav: true
+ 		 	 };
+
+ 	var intro_final = {
+	type: "instructions",
+ 	pages: ["<h1>Next, you will go through some practice trials to see how the task works.</p>These practice trials don't count towards your winnings. </p>Try pressing different options (up arrow, left arrow, right arrow) to see what happens when you observe or guess.</h1>"
+ 		 	 ],
+ 		 	show_clickable_nav: true
+};
+ 
+
+var ready = {
+    type: "instructions",
+    pages: ["<h1>That is the end of the practice trials. Continue to view some final reminders before starting the task.</h1>"
+    ],
+ 	show_clickable_nav: true,
+ 	conditional_function: function () {
+ 		bc = 0;
+ 		t = 50;
+ 		goodbets_trial = 0;
+ 		goodbets_total = 0;
+ 		badbets_trial = 0;
+ 		badbets_total = 0;
+ 		if (bc == 0) {
+ 		return true
+ 		}
+ 		else {
+ 		return false
+ 		}
+ 	}
+ };	
+    	
+var reminder = {
+	type: "text",
+	text: "<h1>A few reminders:</h1></p>"+"1. Your goal in this experiment is to earn as much money as possible <br/>by making correct guesses about which light the Pushbot will turn on."+"</p>2. Each Pushbot has a preference to turn on one light, and you can learn more about this preference by choosing to observe. "+
+    		"<br/>However, you cannot earn money on 'observe' trials. <br/>In order to earn money, you must make guesses."+"<br/> You will find out about the outcome of all guesses at the end of each block. </p>"+
+    		"3. Each Pushbot starts with a preference for one light, but this preference might change suddenly. <br />This does not happen often, but you can expect it to happen a few times during the task."+
+      		"</p>When you are ready to start, press the 'S' key.</p>",
+    cont_key: ['S'],
+    timing_post_trial: 500
+};
+
+//button version of likert  
+var response1 = {
+	type: 'button-response',
+  	stimulus: '',
+  	choices: ['../img/blue4.png', '../img/blue3.png', '../img/blue2.png', '../img/blue1.png', '../img/blank.png', '../img/orange1.png', '../img/orange2.png', '../img/orange3.png', '../img/orange4.png'],
+	button_html: '<img class="button-response" src="%choice%"></img>',
+ 	prompt: '</p><p style="font-size:24px">Please make a prediction about which light will turn on next.</p>' +
+  	'</p><p style="font-size:24px">most certain<---------more certain---------least certain---------more certain--------->most certain</p>',
+  	is_html: true
+};
+  
+  var response2 = {
+  type: 'button-response',
+  stimulus: '',
+  choices: ['../img/orange4.png', '../img/orange3.png', '../img/orange2.png', '../img/orange1.png', '../img/blank.png', '../img/blue1.png', '../img/blue2.png', '../img/blue3.png', '../img/blue4.png'],
+  button_html: '<img class="button-response" src="%choice%"></img>',
+  prompt: '</p><p style="font-size:24px">Please make a prediction about which light will turn on next.</p>' +
+  '</p><p style="font-size:24px">most certain<---------more certain---------least certain---------more certain--------->most certain</p>',
+  is_html: true
+};
+
+
+var ifPredict_likert = {
+	type: 'button-response',
+	timeline: [response1], 
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(data.key_press == 38 && order[bc][a] == '1') {
+		pl = 'ObsOrange';
+		return true;
+		} else if (data.key_press == 38 && order[bc][a] == '0'){
+		pl = 'ObsBlue';
+		return true;
+		}else if (data.key_press == 37) {
+		pl = 'BetBlue';
+		return true;
+		} else if(data.key_press == 39) {
+		pl = 'BetOrange';
+		return true;
+		} else {
+		pl = 'null';
+			return false;
+			}
+		}
+  }; 	
+  
+var ifObsOrange = { 
+	type: 'single-stim',
+	choices: ['q'],
+	timeline: [obs_orange_right],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(okRT == false) {
+	return false;
+	} else if(data.key_press == 38 && order[bc][a] =='1') {
+		series[b]='0';
+		b++;
+		obs++;
+		return true;
+		} else if(pl == 'ObsOrange') {
+		series[b]='0';
+		b++;
+		obs++;
+		return true;
+		} else {
+			return false;
+			}
+		}
+  };  	
+
+var ifObsBlue = {
+	type: 'single-stim',
+	choices: ['q'],
+	timeline: [obs_blue_left],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(okRT==false) {
+	return false;
+	} else if(data.key_press == 38 && order[bc][a] =='0') {
+		series[b]='0';
+		b++;
+		obs++;
+		return true;
+		} else if(pl == 'ObsBlue') {
+		series[b]='0';
+		b++;
+		obs++;
+		return true;
+		} else {
+			return false;
+			}
+		}
+	};
+
+var ifBet_blue = {
+	type: 'single-stim',
+	timeline: [bet_blue],
+	choices: ['q'],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(okRT == false) {
+	return false; 
+	} else if(data.key_press == 37 && order[bc][a] == '0') {
+		goodbets_trial++;
+		goodbets_total++;
+		series[b]='2';
+		b++;
+		return true;
+		} else if(pl == 'BetBlue' && order[bc][a] == '0') {
+		goodbets_trial++;
+		goodbets_total++;
+		series[b]='2';
+		b++;
+		return true; 
+		} else if (data.key_press == 37 && order[bc][a] == '1') {
+		badbets_trial++;
+		badbets_total++;
+		series[b]='2';
+		b++;
+		return true;
+		} else if (pl == 'BetBlue' && order[bc][a] == '1') {
+		badbets_trial++;
+		badbets_total++;
+		series[b]='2';
+		b++;
+		return true;
+		} else {
+			return false;
+		}	
+	}
+};
+
+var ifBet_orange = {
+type: 'single-stim',
+	timeline: [bet_orange],
+	choices: ['q'],
+	conditional_function: function(data) {
+	var data = jsPsych.data.get().last(1).values()[0];
+	if(okRT == false) {
+	return false; 
+	} else if(data.key_press == 39 && order[bc][a] =='1') {
+		goodbets_trial++;
+		goodbets_total++;
+		series[b]='1';
+		b++;
+		return true;
+		} else if (pl == 'BetOrange' && order[bc][a] =='1') {
+		goodbets_trial++;
+		goodbets_total++;
+		series[b]='1';
+		b++;
+		return true;
+		} else if (data.key_press == 39 && order[bc][a] == '0') {
+		badbets_trial++;
+		badbets_total++;
+		series[b]='1';
+		b++;
+		return true;
+		} else if (pl == 'BetOrange' && order[bc][a] == '0') {
+		badbets_trial++;
+		badbets_total++;
+		series[b]='1';
+		b++;
+		return true;
+		} else {
+			return false;
+			}
+		}
+	};
+
+var ifTimeout = {
+type: 'single-stim',
+	timeline: [timeout],
+	conditional_function: function(data) {
+	var data = 	jsPsych.data.get().last(1).values()[0];
+	if(data.rt == -1) {
+	series[b]='3';
+	b++;
+	okRT = false;
+	return true;
+	} else {
+	okRT = true;
+		return false
+		}
+	}
+};
+var stims = ['../img/blue4.png','../img/orange4.png','../img/blank.png','../img/blue2.png','../img/orange2.png','../img/xnew.png'];
+var series_stims = [];
+
+var practice_loop = {
+	type: 'single-stim',
+	timeline: [choice_screen1, ifTimeout, ifObsOrange, ifObsBlue, ifBet_blue, ifBet_orange],
+	loop_function: function(data) {
+		c++;
+		bc=5;
+		a++;
+		if(c<t) {
+			return true;
+		} else {
+		a = 0;
+		c = 0;
+		b = 0;
+		t = 10; //must stay consistent with # of trials for vslblock
+		bc = 6;
+			return false;
+		}
+	},
+	data: {trialCount: t}
+};
+
+var loop_node_1 = {
+   	type: 'single-stim',
+    timeline: [/*predict_likert,*/ choice_screen1, ifTimeout, ifObsOrange, ifObsBlue, ifBet_blue, ifBet_orange],
+    loop_function: function(data){
+        c++; //update the counter
+        a++; 
+		if(c<t){ //change length here depending on trials per block
+            return true;
+             //continue if it is less than number
+        } else {	
+        	bc++; //after all trials in block, update block counter	
+        	c = 0; //return trial counter to 0
+        	a = 0; //return order count to 0
+        	b = 0; //return bet count to 0
+        	t = 50;
+            return false; //end the loop
+        }
+        
+    }
+  };
+  
+var loop_node_2 = {
+type: 'single-stim',
+    timeline: [choice_screen1, ifTimeout, ifPredict_likert, ifObsOrange, ifObsBlue, ifBet_blue, ifBet_orange],
+    loop_function: function(data){
+        c++; //update the counter
+        a++; 
+		if(c<t){ //change length here depending on trials per block
+            return true;
+             //continue if it is less than number
+        } else {	
+        	bc++; //after all trials in block, update block counter	
+        	c = 0; //return trial counter to 0
+        	a = 0; //return order count to 0
+        	b = 0; //return bet count to 0
+        	t = 50;
+        	pl = 'null' //reset so that bet blue/red isn't always set for next block
+            return false; //else end the loop
+        }
+        
+    }
+  };
+
+
+var if_control = {
+    timeline: [loop_node_1],
+    conditional_function: function(){
+        if(bc== 0 ||bc==2) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+};
+
+var if_predict = {
+    timeline: [loop_node_2],
+    conditional_function: function(){
+        if(bc==1 ||bc== 3) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+};
+
+// Setting up feedback image for end of block:
+
+//Make array of stimuli based on pre-established order in 0,1 array
+var obs_order = [];
+var series_stims = []; //array to hold subject choices
+
+// create vsl block to hold grid image
+var vsl_block = {
+    type: 'vsl-grid-scene',
+    stimuli: function(){ 
+    	for(var i = 0; i < t; i++) {
+	if (series[i]=='0') {
+		series_stims[i] = stims[2]; 
+		}
+	else if (series[i] == '1') {
+		series_stims[i] = stims[4];
+		}
+	else if (series[i]=='2') {
+		series_stims[i] = stims[3] 
+		}
+	else if (series[i] == '3') {
+		series_stims[i] = stims[5]
+		}}
+	for (var j = 0; j < t; j++) {
+	if (order[bc-1][j]=='0') {
+		obs_order[j] = stims[0]; 
+		}
+	else {
+	obs_order[j] = stims[1]
+	}
+	}; 
+	return [obs_order, series_stims] 
+	},
+    timing_duration: 20000,
+    image_size: [20,20],
+    prompt: '</p>Prompt Test</p>'
+};  
+
+
+  var debrief_block = {
+    type: "text",
+    choices: ['c'],
+    text: function() {
+      return "<h1><i><strong>Block Summary</strong></i></h1>"+
+      "<h1># trials observed: "+obs+" ($0)</h1>"+
+      "<h1># correct guesses: "+goodbets_trial+" (+ $"+(0.25*goodbets_trial).toFixed(2)+")</h1>"+
+      "<h1># incorrect guesses: "+badbets_trial+" (- $"+(0.15*badbets_trial).toFixed(2)+")</h1>"+
+      "<h1>Earnings from this block: $"+(0.25*goodbets_trial - 0.15*badbets_trial).toFixed(2)+"</h1>"+
+      "<h1>Total earnings so far: $"+(0.25*goodbets_total - 0.15*badbets_total).toFixed(2)+"</h1>"+
+      "<h1>Press 'C' to continue. </h1>";
+    }
+};   
+
+var timeline = [];
+
+timeline.push(subject_info);
+timeline.push(welcome_block);
+timeline.push(intro);
+timeline.push(practice_predict_loop1, practice_predict_loop2);
+timeline.push(intro_2);
+timeline.push(intro_final);
+timeline.push(practice_loop);
+timeline.push(vsl_block);
+timeline.push(debrief_block);
+timeline.push(ready);
+timeline.push(reminder);
+timeline.push(block_start, loop_node_1, vsl_block, debrief_block);
+timeline.push(block_start, loop_node_1, vsl_block, debrief_block);
+timeline.push(block_start, loop_node_2, vsl_block, debrief_block);
+timeline.push(block_start, loop_node_1, vsl_block, debrief_block);
+timeline.push(block_start, loop_node_2, vsl_block, debrief_block);
+
+
+/* grab data before the end of the experiment */
+var save_data = {
+	type: 'call-function',
+	func: function() {
+		saveData("obsbet_"+id+".csv", jsPsych.data.dataAsCSV())
+	},
+	timing_post_trial: 0
+	};
+
+/* save data and debrief */
+//timeline.push(save_data);
+
+jsPsych.init({ 
+	timeline: timeline,
+    	on_finish: function() {
+	var time = new Date();
+	jsPsych.data.addDataToLastTrial({date: time}); //add timestamp of the worker, this can help match the turker id
+	jsPsych.data.addDataToLastTrial({condition: exp_condition});
+	$.ajax({
+          type: "POST",
+          url: "/experiment-data",
+          data: jsPsych.data.get().json(),
+          contentType: "application/json"
+        })
+        .done(function() {
+          window.location.href = "finish";
+        })
+        .fail(function() {
+          alert("A problem occurred while writing to the database. Please contact the researcher for more information.")
+          window.location.href = "/";
+        })
+	}
+    	});
+    
+    </script>
+</html>
+
